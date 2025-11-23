@@ -3,18 +3,31 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 
 const rootElement = document.getElementById('root');
-if (!rootElement) {
-  throw new Error("Could not find root element to mount to");
-}
 
-const root = ReactDOM.createRoot(rootElement);
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+try {
+  if (!rootElement) {
+    throw new Error("Could not find root element to mount to");
+  }
 
-// Remove the HTML loader once React takes over
-if ((window as any).removeLoadingScreen) {
-  setTimeout(() => (window as any).removeLoadingScreen(), 500);
+  const root = ReactDOM.createRoot(rootElement);
+  root.render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  );
+
+  // Remove the HTML loader once React takes over
+  if ((window as any).removeLoadingScreen) {
+    // Small delay to ensure styles are applied
+    setTimeout(() => (window as any).removeLoadingScreen(), 500);
+  }
+
+} catch (error: any) {
+  console.error("React Mount Failed:", error);
+  const errorDisplay = document.getElementById('error-display');
+  if (errorDisplay) {
+    errorDisplay.style.display = 'block';
+    errorDisplay.innerText = `Application Crash:\n${error.message || error}`;
+    if ((window as any).removeLoadingScreen) (window as any).removeLoadingScreen();
+  }
 }

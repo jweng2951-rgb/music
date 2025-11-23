@@ -51,6 +51,17 @@
         z-index: 9999;
         transition: opacity 0.5s ease;
       }
+      #error-display {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        background: #1e1e1e;
+        color: #ff5555;
+        padding: 20px;
+        font-family: monospace;
+        white-space: pre-wrap;
+      }
     </style>
     <script type="importmap">
 {
@@ -66,6 +77,9 @@
 </script>
   </head>
   <body>
+    <!-- Global Error Display for Debugging -->
+    <div id="error-display"></div>
+
     <!-- Initial Loading Screen -->
     <div id="loading-screen">
       <div class="loader"></div>
@@ -78,7 +92,16 @@
     <script type="module" src="index.tsx"></script>
     
     <script>
-      // Remove loading screen when React mounts
+      // Failsafe: Remove loading screen if it gets stuck
+      setTimeout(() => {
+        const screen = document.getElementById('loading-screen');
+        if (screen && screen.style.opacity !== '0') {
+           // Don't remove, just letting user know it's taking long, 
+           // usually React handles the removal.
+           console.warn("Loading taking longer than expected...");
+        }
+      }, 5000);
+
       window.removeLoadingScreen = function() {
         const screen = document.getElementById('loading-screen');
         if (screen) {
@@ -86,6 +109,17 @@
           setTimeout(() => screen.remove(), 500);
         }
       }
+
+      window.onerror = function(msg, url, line, col, error) {
+        const errorDisplay = document.getElementById('error-display');
+        if (errorDisplay) {
+          errorDisplay.style.display = 'block';
+          errorDisplay.innerHTML = `<strong>Runtime Error:</strong><br>${msg}<br><br>Line: ${line}`;
+          // Ensure loading screen is gone so we can see the error
+          window.removeLoadingScreen();
+        }
+        return false;
+      };
     </script>
   </body>
 </html>
