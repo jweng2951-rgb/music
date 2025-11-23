@@ -9,15 +9,42 @@ const KEYS = {
   SESSION: 'nexus_cms_session'
 };
 
+// Helper for safe storage access
+const storage = {
+    getItem: (key: string) => {
+        if (typeof window === 'undefined') return null;
+        try {
+            return localStorage.getItem(key);
+        } catch (e) {
+            console.error("Storage access failed", e);
+            return null;
+        }
+    },
+    setItem: (key: string, value: string) => {
+        if (typeof window === 'undefined') return;
+        try {
+            localStorage.setItem(key, value);
+        } catch (e) {
+            console.error("Storage write failed", e);
+        }
+    }
+};
+
 const initializeDB = () => {
-  if (!localStorage.getItem(KEYS.USERS)) {
-    localStorage.setItem(KEYS.USERS, JSON.stringify([SEED_ADMIN]));
-  }
-  if (!localStorage.getItem(KEYS.ASSETS)) {
-    localStorage.setItem(KEYS.ASSETS, JSON.stringify(MOCK_ASSETS));
-  }
-  if (!localStorage.getItem(KEYS.CHANNELS)) {
-    localStorage.setItem(KEYS.CHANNELS, JSON.stringify(MOCK_CHANNELS));
+  if (typeof window === 'undefined') return;
+  
+  try {
+      if (!storage.getItem(KEYS.USERS)) {
+        storage.setItem(KEYS.USERS, JSON.stringify([SEED_ADMIN]));
+      }
+      if (!storage.getItem(KEYS.ASSETS)) {
+        storage.setItem(KEYS.ASSETS, JSON.stringify(MOCK_ASSETS));
+      }
+      if (!storage.getItem(KEYS.CHANNELS)) {
+        storage.setItem(KEYS.CHANNELS, JSON.stringify(MOCK_CHANNELS));
+      }
+  } catch (e) {
+      console.error("DB Init failed", e);
   }
 };
 
@@ -26,19 +53,19 @@ initializeDB();
 export const dataService = {
   // Auth
   login: (username: string, password: string): User | null => {
-    const users: User[] = JSON.parse(localStorage.getItem(KEYS.USERS) || '[]');
+    const users: User[] = JSON.parse(storage.getItem(KEYS.USERS) || '[]');
     const user = users.find(u => u.username === username && u.password === password);
     return user || null;
   },
 
   // User Management (Master Only)
   getUsers: (): User[] => {
-    const users: User[] = JSON.parse(localStorage.getItem(KEYS.USERS) || '[]');
+    const users: User[] = JSON.parse(storage.getItem(KEYS.USERS) || '[]');
     return users.filter(u => u.role !== 'MASTER'); // Only return sub-accounts
   },
 
   createUser: (user: Omit<User, 'id' | 'role' | 'createdAt'>): User => {
-    const users: User[] = JSON.parse(localStorage.getItem(KEYS.USERS) || '[]');
+    const users: User[] = JSON.parse(storage.getItem(KEYS.USERS) || '[]');
     if (users.find(u => u.username === user.username)) {
       throw new Error("Username exists");
     }
@@ -49,28 +76,28 @@ export const dataService = {
       createdAt: new Date().toISOString()
     };
     users.push(newUser);
-    localStorage.setItem(KEYS.USERS, JSON.stringify(users));
+    storage.setItem(KEYS.USERS, JSON.stringify(users));
     return newUser;
   },
 
   updateUser: (id: string, updates: Partial<User>) => {
-    const users: User[] = JSON.parse(localStorage.getItem(KEYS.USERS) || '[]');
+    const users: User[] = JSON.parse(storage.getItem(KEYS.USERS) || '[]');
     const idx = users.findIndex(u => u.id === id);
     if (idx !== -1) {
       users[idx] = { ...users[idx], ...updates };
-      localStorage.setItem(KEYS.USERS, JSON.stringify(users));
+      storage.setItem(KEYS.USERS, JSON.stringify(users));
     }
   },
 
   deleteUser: (id: string) => {
-    let users: User[] = JSON.parse(localStorage.getItem(KEYS.USERS) || '[]');
+    let users: User[] = JSON.parse(storage.getItem(KEYS.USERS) || '[]');
     users = users.filter(u => u.id !== id);
-    localStorage.setItem(KEYS.USERS, JSON.stringify(users));
+    storage.setItem(KEYS.USERS, JSON.stringify(users));
   },
 
   // Asset Management
   getAssets: (currentUser: User): Asset[] => {
-    let assets: Asset[] = JSON.parse(localStorage.getItem(KEYS.ASSETS) || '[]');
+    let assets: Asset[] = JSON.parse(storage.getItem(KEYS.ASSETS) || '[]');
     
     // Sub accounts only see their own assets
     if (currentUser.role === 'SUB') {
@@ -86,7 +113,7 @@ export const dataService = {
   },
 
   addAsset: (asset: Omit<Asset, 'id' | 'status' | 'isrc' | 'uploadDate' | 'earnings'>) => {
-    const assets: Asset[] = JSON.parse(localStorage.getItem(KEYS.ASSETS) || '[]');
+    const assets: Asset[] = JSON.parse(storage.getItem(KEYS.ASSETS) || '[]');
     const newAsset: Asset = {
         ...asset,
         id: Math.random().toString(36).substr(2, 9),
@@ -96,25 +123,25 @@ export const dataService = {
         earnings: 0
     };
     assets.unshift(newAsset);
-    localStorage.setItem(KEYS.ASSETS, JSON.stringify(assets));
+    storage.setItem(KEYS.ASSETS, JSON.stringify(assets));
   },
 
   assignAsset: (assetId: string, newOwnerId: string) => {
-    const assets: Asset[] = JSON.parse(localStorage.getItem(KEYS.ASSETS) || '[]');
+    const assets: Asset[] = JSON.parse(storage.getItem(KEYS.ASSETS) || '[]');
     const idx = assets.findIndex(a => a.id === assetId);
     if (idx !== -1) {
         assets[idx].ownerId = newOwnerId;
-        localStorage.setItem(KEYS.ASSETS, JSON.stringify(assets));
+        storage.setItem(KEYS.ASSETS, JSON.stringify(assets));
     }
   },
 
   // Channel Management
   getChannels: (): Channel[] => {
-    return JSON.parse(localStorage.getItem(KEYS.CHANNELS) || '[]');
+    return JSON.parse(storage.getItem(KEYS.CHANNELS) || '[]');
   },
 
   bindChannel: () => {
-    const channels: Channel[] = JSON.parse(localStorage.getItem(KEYS.CHANNELS) || '[]');
+    const channels: Channel[] = JSON.parse(storage.getItem(KEYS.CHANNELS) || '[]');
     const newChannel: Channel = {
         id: Math.random().toString(36).substr(2, 9),
         name: `New Channel ${channels.length + 1}`,
@@ -123,12 +150,12 @@ export const dataService = {
         linkedAt: new Date().toISOString().split('T')[0]
     };
     channels.push(newChannel);
-    localStorage.setItem(KEYS.CHANNELS, JSON.stringify(channels));
+    storage.setItem(KEYS.CHANNELS, JSON.stringify(channels));
   },
 
   // Stats
   getStats: (currentUser: User): DashboardStats => {
-    let assets = JSON.parse(localStorage.getItem(KEYS.ASSETS) || '[]') as Asset[];
+    let assets = JSON.parse(storage.getItem(KEYS.ASSETS) || '[]') as Asset[];
     
     // Filter assets for stats calculation based on role
     if (currentUser.role === 'SUB') {

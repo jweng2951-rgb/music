@@ -15,8 +15,8 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl w-full max-w-md shadow-2xl">
+    <div className="fixed inset-0 z-50 min-h-screen bg-slate-950 flex items-center justify-center p-4">
+      <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl w-full max-w-md shadow-2xl relative">
         <div className="text-center mb-8">
             <div className="w-12 h-12 bg-gradient-to-br from-cyan-400 to-indigo-600 rounded-lg mx-auto mb-4 flex items-center justify-center text-xl font-bold text-white">N</div>
             <h1 className="text-2xl font-bold text-white">Nexus CMS</h1>
