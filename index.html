@@ -96,11 +96,12 @@
       setTimeout(() => {
         const screen = document.getElementById('loading-screen');
         if (screen && screen.style.opacity !== '0') {
-           // Don't remove, just letting user know it's taking long, 
-           // usually React handles the removal.
            console.warn("Loading taking longer than expected...");
+           // Force remove if 8 seconds pass, so user at least sees SOMETHING (even if it's broken UI)
+           screen.style.opacity = '0';
+           setTimeout(() => screen.remove(), 500);
         }
-      }, 5000);
+      }, 8000);
 
       window.removeLoadingScreen = function() {
         const screen = document.getElementById('loading-screen');
@@ -115,7 +116,6 @@
         if (errorDisplay) {
           errorDisplay.style.display = 'block';
           errorDisplay.innerHTML = `<strong>Runtime Error:</strong><br>${msg}<br><br>Line: ${line}`;
-          // Ensure loading screen is gone so we can see the error
           window.removeLoadingScreen();
         }
         return false;
