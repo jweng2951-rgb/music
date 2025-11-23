@@ -9,15 +9,17 @@ const KEYS = {
   SESSION: 'nexus_cms_session'
 };
 
-// Helper for safe storage access
+// Helper for safe storage access (Memory fallback if localStorage is blocked)
+const memoryStorage: Record<string, string> = {};
+
 const storage = {
     getItem: (key: string) => {
         if (typeof window === 'undefined') return null;
         try {
             return localStorage.getItem(key);
         } catch (e) {
-            console.error("Storage access failed", e);
-            return null;
+            console.warn("LocalStorage blocked, using memory fallback");
+            return memoryStorage[key] || null;
         }
     },
     setItem: (key: string, value: string) => {
@@ -25,7 +27,7 @@ const storage = {
         try {
             localStorage.setItem(key, value);
         } catch (e) {
-            console.error("Storage write failed", e);
+            memoryStorage[key] = value;
         }
     }
 };
@@ -53,19 +55,25 @@ initializeDB();
 export const dataService = {
   // Auth
   login: (username: string, password: string): User | null => {
-    const users: User[] = JSON.parse(storage.getItem(KEYS.USERS) || '[]');
+    const json = storage.getItem(KEYS.USERS);
+    if (!json) return null;
+    const users: User[] = JSON.parse(json);
     const user = users.find(u => u.username === username && u.password === password);
     return user || null;
   },
 
   // User Management (Master Only)
   getUsers: (): User[] => {
-    const users: User[] = JSON.parse(storage.getItem(KEYS.USERS) || '[]');
+    const json = storage.getItem(KEYS.USERS);
+    if (!json) return [];
+    const users: User[] = JSON.parse(json);
     return users.filter(u => u.role !== 'MASTER'); // Only return sub-accounts
   },
 
   createUser: (user: Omit<User, 'id' | 'role' | 'createdAt'>): User => {
-    const users: User[] = JSON.parse(storage.getItem(KEYS.USERS) || '[]');
+    const json = storage.getItem(KEYS.USERS);
+    const users: User[] = json ? JSON.parse(json) : [];
+    
     if (users.find(u => u.username === user.username)) {
       throw new Error("Username exists");
     }
@@ -81,7 +89,9 @@ export const dataService = {
   },
 
   updateUser: (id: string, updates: Partial<User>) => {
-    const users: User[] = JSON.parse(storage.getItem(KEYS.USERS) || '[]');
+    const json = storage.getItem(KEYS.USERS);
+    if (!json) return;
+    const users: User[] = JSON.parse(json);
     const idx = users.findIndex(u => u.id === id);
     if (idx !== -1) {
       users[idx] = { ...users[idx], ...updates };
@@ -90,14 +100,17 @@ export const dataService = {
   },
 
   deleteUser: (id: string) => {
-    let users: User[] = JSON.parse(storage.getItem(KEYS.USERS) || '[]');
+    let json = storage.getItem(KEYS.USERS);
+    if (!json) return;
+    let users: User[] = JSON.parse(json);
     users = users.filter(u => u.id !== id);
     storage.setItem(KEYS.USERS, JSON.stringify(users));
   },
 
   // Asset Management
   getAssets: (currentUser: User): Asset[] => {
-    let assets: Asset[] = JSON.parse(storage.getItem(KEYS.ASSETS) || '[]');
+    const json = storage.getItem(KEYS.ASSETS);
+    let assets: Asset[] = json ? JSON.parse(json) : [];
     
     // Sub accounts only see their own assets
     if (currentUser.role === 'SUB') {
@@ -113,7 +126,8 @@ export const dataService = {
   },
 
   addAsset: (asset: Omit<Asset, 'id' | 'status' | 'isrc' | 'uploadDate' | 'earnings'>) => {
-    const assets: Asset[] = JSON.parse(storage.getItem(KEYS.ASSETS) || '[]');
+    const json = storage.getItem(KEYS.ASSETS);
+    const assets: Asset[] = json ? JSON.parse(json) : [];
     const newAsset: Asset = {
         ...asset,
         id: Math.random().toString(36).substr(2, 9),
@@ -127,7 +141,9 @@ export const dataService = {
   },
 
   assignAsset: (assetId: string, newOwnerId: string) => {
-    const assets: Asset[] = JSON.parse(storage.getItem(KEYS.ASSETS) || '[]');
+    const json = storage.getItem(KEYS.ASSETS);
+    if (!json) return;
+    const assets: Asset[] = JSON.parse(json);
     const idx = assets.findIndex(a => a.id === assetId);
     if (idx !== -1) {
         assets[idx].ownerId = newOwnerId;
@@ -137,11 +153,13 @@ export const dataService = {
 
   // Channel Management
   getChannels: (): Channel[] => {
-    return JSON.parse(storage.getItem(KEYS.CHANNELS) || '[]');
+    const json = storage.getItem(KEYS.CHANNELS);
+    return json ? JSON.parse(json) : [];
   },
 
   bindChannel: () => {
-    const channels: Channel[] = JSON.parse(storage.getItem(KEYS.CHANNELS) || '[]');
+    const json = storage.getItem(KEYS.CHANNELS);
+    const channels: Channel[] = json ? JSON.parse(json) : [];
     const newChannel: Channel = {
         id: Math.random().toString(36).substr(2, 9),
         name: `New Channel ${channels.length + 1}`,
@@ -155,7 +173,8 @@ export const dataService = {
 
   // Stats
   getStats: (currentUser: User): DashboardStats => {
-    let assets = JSON.parse(storage.getItem(KEYS.ASSETS) || '[]') as Asset[];
+    const assetsJson = storage.getItem(KEYS.ASSETS);
+    let assets = (assetsJson ? JSON.parse(assetsJson) : []) as Asset[];
     
     // Filter assets for stats calculation based on role
     if (currentUser.role === 'SUB') {
