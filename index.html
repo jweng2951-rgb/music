@@ -69,7 +69,6 @@
     "react": "https://esm.sh/react@18.2.0",
     "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
     "react-dom": "https://esm.sh/react-dom@18.2.0",
-    "@google/genai": "https://esm.sh/@google/genai@0.1.0",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
     "react/": "https://aistudiocdn.com/react@^19.2.0/"
   }
@@ -96,12 +95,12 @@
       setTimeout(() => {
         const screen = document.getElementById('loading-screen');
         if (screen && screen.style.opacity !== '0') {
-           console.warn("Loading taking longer than expected...");
-           // Force remove if 8 seconds pass, so user at least sees SOMETHING (even if it's broken UI)
+           // If we are here, React likely crashed silently or hasn't started.
+           // We remove the loader so at least the error might be visible if rendered.
            screen.style.opacity = '0';
            setTimeout(() => screen.remove(), 500);
         }
-      }, 8000);
+      }, 5000);
 
       window.removeLoadingScreen = function() {
         const screen = document.getElementById('loading-screen');
@@ -115,7 +114,7 @@
         const errorDisplay = document.getElementById('error-display');
         if (errorDisplay) {
           errorDisplay.style.display = 'block';
-          errorDisplay.innerHTML = `<strong>Runtime Error:</strong><br>${msg}<br><br>Line: ${line}`;
+          errorDisplay.innerHTML = `<strong>Runtime Error:</strong><br>${msg}<br><br>Check console for details.`;
           window.removeLoadingScreen();
         }
         return false;
